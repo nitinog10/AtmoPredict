@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Weather Map Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #weatherMap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+        
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 1000;
+            max-width: 350px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .layer-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .layer-btn {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .layer-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .layer-btn.active {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border-color: transparent;
+            font-weight: 600;
+        }
+        
+        .location-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .location-input input {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9em;
+        }
+        
+        .location-input input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .search-btn {
+            padding: 10px 20px;
+            background: #4facfe;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .time-controls {
+            margin-bottom: 20px;
+        }
+        
+        .time-slider {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            margin: 15px 0;
+        }
+        
+        .time-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4facfe;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .time-display {
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .date-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .date-selector select {
+            flex: 1;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+        }
+        
+        .weather-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 1000;
+            min-width: 300px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .weather-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .weather-metric:last-child {
+            border-bottom: none;
+        }
+        
+        .weather-value {
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .legend {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1000;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .legend-scale {
+            width: 200px;
+            height: 20px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+        }
+        
+        .temp-scale {
+            background: linear-gradient(to right, #313695, #4575b4, #abd9e9, #fee090, #f46d43, #a50026);
+        }
+        
+        .precip-scale {
+            background: linear-gradient(to right, transparent, #73b2ff, #0084ff, #ffaa00, #ff0000, #c800ff);
+        }
+        
+        .wind-scale {
+            background: linear-gradient(to right, #ffffff, #80d4ff, #0099ff, #0055aa);
+        }
+        
+        .aqi-scale {
+            background: linear-gradient(to right, #00e400, #ffff00, #ff7e00, #ff0000, #99004c);
+        }
+        
+        .play-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .play-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .play-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .play-btn.active {
+            background: #4facfe;
+            border-color: transparent;
+        }
+        
+        /* Wind animation */
+        @keyframes windFlow {
+            0% { transform: translateX(0); opacity: 0.7; }
+            100% { transform: translateX(50px); opacity: 0; }
+        }
+        
+        .wind-particle {
+            position: absolute;
+            width: 40px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.7);
+            animation: windFlow 3s linear infinite;
+        }
+        
+        .forecast-timeline {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 10px 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .time-step {
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .time-step:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .time-step.active {
+            background: #4facfe;
+            font-weight: 600;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            display: none;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="weatherMap"></div>
+    
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <h3 style="margin-bottom: 15px;">
+            <i class="fas fa-layer-group"></i> Weather Layers
+        </h3>
+        
+        <div class="layer-controls">
+            <button class="layer-btn active" onclick="switchLayer('temperature')">
+                <i class="fas fa-thermometer-half"></i> Temperature
+            </button>
+            <button class="layer-btn" onclick="switchLayer('precipitation')">
+                <i class="fas fa-cloud-rain"></i> Precipitation
+            </button>
+            <button class="layer-btn" onclick="switchLayer('wind')">
+                <i class="fas fa-wind"></i> Wind
+            </button>
+            <button class="layer-btn" onclick="switchLayer('aqi')">
+                <i class="fas fa-smog"></i> Air Quality
+            </button>
+        </div>
+        
+        <div class="location-input">
+            <input type="number" id="latInput" placeholder="Latitude" value="23.2" min="-90" max="90" step="0.1">
+            <input type="number" id="lonInput" placeholder="Longitude" value="77.4" min="-180" max="180" step="0.1">
+            <button class="search-btn" onclick="updateLocation()">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        
+        <div class="time-controls">
+            <div class="time-display" id="timeDisplay">
+                Saturday, 4 October 2025 - 11:00 AM
+            </div>
+            
+            <input type="range" class="time-slider" id="timeSlider" min="0" max="23" value="11" onchange="updateTime()">
+            
+            <div class="date-selector">
+                <select id="daySelect" onchange="updateDate()">
+                    <option value="4">4 October</option>
+                    <option value="5">5 October</option>
+                    <option value="6">6 October</option>
+                    <option value="7">7 October</option>
+                </select>
+                <select id="yearSelect" onchange="updateDate()">
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                </select>
+            </div>
+            
+            <div class="play-controls">
+                <button class="play-btn" onclick="playAnimation()">
+                    <i class="fas fa-play"></i> Play 24h
+                </button>
+                <button class="play-btn" onclick="toggleLive()">
+                    <i class="fas fa-broadcast-tower"></i> Live
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="legend" id="legend">
+        <div class="legend-title">Temperature (°C)</div>
+        <div class="legend-scale temp-scale"></div>
+        <div class="legend-labels">
+            <span>-40</span>
+            <span>0</span>
+            <span>20</span>
+            <span>30</span>
+            <span>55</span>
+        </div>
+    </div>
+    
+    <!-- Weather Info -->
+    <div class="weather-info">
+        <h4 style="margin-bottom: 15px;">
+            <i class="fas fa-map-marker-alt"></i> <span id="locationName">Sehore, MP</span>
+        </h4>
+        <div class="weather-metric">
+            <span><i class="fas fa-thermometer-half"></i> Temperature</span>
+            <span class="weather-value" id="tempValue">29°C</span>
+        </div>
+        <div class="weather-metric">
+            <span><i class="fas fa-wind"></i> Wind</span>
+            <span class="weather-value" id="windValue">11 kph NW</span>
+        </div>
+        <div class="weather-metric">
+            <span><i class="fas fa-cloud-rain"></i> Precipitation</span>
+            <span class="weather-value" id="precipValue">Light</span>
+        </div>
+        <div class="weather-metric">
+            <span><i class="fas fa-smog"></i> AQI</span>
+            <span class="weather-value" id="aqiValue">76</span>
+        </div>
+    </div>
+    
+    <!-- Forecast Timeline -->
+    <div class="forecast-timeline">
+        <span class="time-step" onclick="setHour(9)">9AM</span>
+        <span class="time-step active" onclick="setHour(11)">Now</span>
+        <span class="time-step" onclick="setHour(13)">1PM</span>
+        <span class="time-step" onclick="setHour(15)">3PM</span>
+        <span class="time-step" onclick="setHour(17)">5PM</span>
+        <span class="time-step" onclick="setHour(19)">7PM</span>
+        <span class="time-step" onclick="setHour(21)">9PM</span>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader"></div>
+    </div>
+    
+    <script>
+        let map;
+        let currentLayer = 'temperature';
+        let weatherLayers = {};
+        let currentHour = 11;
+        let animationInterval;
+        let isLive = false;
+        let windAnimations = [];
+        
+        // Initialize map
+        function initMap() {
+            map = L.map('weatherMap', {
+                center: [23.2, 77.4],
+                zoom: 6,
+                zoomControl: false
+            });
+            
+            // Dark tile layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors © CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+            
+            // Add zoom control to bottom right
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(map);
+            
+            // Initialize weather layers
+            createWeatherLayers();
+            
+            // Map click handler
+            map.on('click', function(e) {
+                document.getElementById('latInput').value = e.latlng.lat.toFixed(1);
+                document.getElementById('lonInput').value = e.latlng.lng.toFixed(1);
+                updateLocation();
+            });
+        }
+        
+        // Create weather overlay layers
+        function createWeatherLayers() {
+            // Temperature layer
+            weatherLayers.temperature = createTemperatureLayer();
+            weatherLayers.temperature.addTo(map);
+            
+            // Precipitation layer
+            weatherLayers.precipitation = createPrecipitationLayer();
+            
+            // Wind layer
+            weatherLayers.wind = createWindLayer();
+            
+            // AQI layer
+            weatherLayers.aqi = createAQILayer();
+        }
+        
+        // Create temperature heatmap layer
+        function createTemperatureLayer() {
+            const bounds = map.getBounds();
+            const canvas = document.createElement('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // Create temperature gradient
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, 'rgba(49, 54, 149, 0.6)');
+            gradient.addColorStop(0.2, 'rgba(69, 117, 180, 0.6)');
+            gradient.addColorStop(0.4, 'rgba(171, 217, 233, 0.6)');
+            gradient.addColorStop(0.6, 'rgba(254, 224, 144, 0.6)');
+            gradient.addColorStop(0.8, 'rgba(244, 109, 67, 0.6)');
+            gradient.addColorStop(1, 'rgba(165, 0, 38, 0.6)');
+            
+            // Draw temperature pattern
+            for (let i = 0; i < 50; i++) {
+                for (let j = 0; j < 50; j++) {
+                    const temp = 20 + Math.sin(i * 0.1) * 10 + Math.cos(j * 0.1) * 5 + Math.random() * 5;
+                    const hue = (1 - (temp + 40) / 95) * 240;
+                    ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+                    ctx.fillRect(i * canvas.width / 50, j * canvas.height / 50, canvas.width / 50, canvas.height / 50);
+                }
+            }
+            
+            const imageUrl = canvas.toDataURL();
+            return L.imageOverlay(imageUrl, bounds, { opacity: 0.7 });
+        }
+        
+        // Create precipitation layer
+        function createPrecipitationLayer() {
+            const precipGroup = L.layerGroup();
+            
+            // Add precipitation circles
+            const bounds = map.getBounds();
+            for (let i = 0; i < 20; i++) {
+                const lat = Math.random() * (bounds.getNorth() - bounds.getSouth()) + bounds.getSouth();
+                const lng = Math.random() * (bounds.getEast() - bounds.getWest()) + bounds.getWest();
+                const intensity = Math.random();
+                
+                L.circle([lat, lng], {
+                    radius: 50000 + Math.random() * 100000,
+                    fillColor: intensity > 0.7 ? '#c800ff' : intensity > 0.5 ? '#0084ff' : '#73b2ff',
+                    fillOpacity: 0.3 + intensity * 0.3,
+                    stroke: false
+                }).addTo(precipGroup);
+            }
+            
+            return precipGroup;
+        }
+        
+        // Create wind layer with animated particles
+        function createWindLayer() {
+            const windGroup = L.layerGroup();
+            
+            // Add wind flow visualization
+            const bounds = map.getBounds();
+            for (let i = 0; i < 30; i++) {
+                const lat = Math.random() * (bounds.getNorth() - bounds.getSouth()) + bounds.getSouth();
+                const lng = Math.random() * (bounds.getEast() - bounds.getWest()) + bounds.getWest();
+                
+                // Create wind arrow
+                const windIcon = L.divIcon({
+                    html: '<div style="color: #00aaff; font-size: 20px; transform: rotate(-45deg);">→</div>',
+                    iconSize: [20, 20],
+                    className: 'wind-arrow'
+                });
+                
+                L.marker([lat, lng], { icon: windIcon }).addTo(windGroup);
+            }
+            
+            return windGroup;
+        }
+        
+        // Create AQI layer
+        function createAQILayer() {
+            const aqiGroup = L.layerGroup();
+            
+            // Add AQI circles with colors
+            const cities = [
+                { lat: 23.2, lng: 77.4, aqi: 76, name: 'Sehore' },
+                { lat: 23.18, lng: 77.42, aqi: 80, name: 'Bhopal' },
+                { lat: 28.6139, lng: 77.209, aqi: 150, name: 'Delhi' },
+                { lat: 19.076, lng: 72.8777, aqi: 120, name: 'Mumbai' }
+            ];
+            
+            cities.forEach(city => {
+                const color = city.aqi > 100 ? '#ff0000' : city.aqi > 50 ? '#ffff00' : '#00e400';
+                L.circle([city.lat, city.lng], {
+                    radius: 100000,
+                    fillColor: color,
+                    fillOpacity: 0.5,
+                    color: color,
+                    weight: 2
+                }).bindPopup(`${city.name}: AQI ${city.aqi}`).addTo(aqiGroup);
+            });
+            
+            return aqiGroup;
+        }
+        
+        // Switch between layers
+        function switchLayer(layerName) {
+            // Remove all layers
+            Object.values(weatherLayers).forEach(layer => map.removeLayer(layer));
+            
+            // Add selected layer
+            currentLayer = layerName;
+            weatherLayers[layerName].addTo(map);
+            
+            // Update buttons
+            document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.layer-btn').classList.add('active');
+            
+            // Update legend
+            updateLegend(layerName);
+        }
+        
+        // Update legend based on layer
+        function updateLegend(layerName) {
+            const legend = document.getElementById('legend');
+            const legendTitle = legend.querySelector('.legend-title');
+            const legendScale = legend.querySelector('.legend-scale');
+            const legendLabels = legend.querySelector('.legend-labels');
+            
+            switch(layerName) {
+                case 'temperature':
+                    legendTitle.textContent = 'Temperature (°C)';
+                    legendScale.className = 'legend-scale temp-scale';
+                    legendLabels.innerHTML = '<span>-40</span><span>0</span><span>20</span><span>30</span><span>55</span>';
+                    break;
+                case 'precipitation':
+                    legendTitle.textContent = 'Precipitation';
+                    legendScale.className = 'legend-scale precip-scale';
+                    legendLabels.innerHTML = '<span>Light</span><span>Moderate</span><span>Heavy</span><span>Extreme</span>';
+                    break;
+                case 'wind':
+                    legendTitle.textContent = 'Wind Speed (kph)';
+                    legendScale.className = 'legend-scale wind-scale';
+                    legendLabels.innerHTML = '<span>0</span><span>40</span><span>80</span><span>120</span>';
+                    break;
+                case 'aqi':
+                    legendTitle.textContent = 'Air Quality Index';
+                    legendScale.className = 'legend-scale aqi-scale';
+                    legendLabels.innerHTML = '<span>0</span><span>100</span><span>200</span><span>300</span><span>500</span>';
+                    break;
+            }
+        }
+        
+        // Update location
+        function updateLocation() {
+            const lat = parseFloat(document.getElementById('latInput').value);
+            const lng = parseFloat(document.getElementById('lonInput').value);
+            
+            if (isNaN(lat) || isNaN(lng)) return;
+            
+            showLoading(true);
+            
+            setTimeout(() => {
+                map.setView([lat, lng], 6);
+                updateWeatherInfo(lat, lng);
+                updateLocationName(lat, lng);
+                
+                // Recreate layers for new location
+                Object.values(weatherLayers).forEach(layer => map.removeLayer(layer));
+                createWeatherLayers();
+                weatherLayers[currentLayer].addTo(map);
+                
+                showLoading(false);
+            }, 500);
+        }
+        
+        // Update weather information
+        function updateWeatherInfo(lat, lng) {
+            // Simulate weather data based on location and time
+            const temp = Math.round(25 - Math.abs(lat - 23) * 0.5 + Math.sin(currentHour * 0.3) * 5);
+            const windSpeed = Math.round(5 + Math.random() * 20);
+            const windDir = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.floor(Math.random() * 8)];
+            const precip = Math.random() > 0.7 ? 'Moderate' : Math.random() > 0.3 ? 'Light' : 'None';
+            const aqi = Math.round(50 + Math.abs(lat - 23) * 5 + Math.random() * 50);
+            
+            document.getElementById('tempValue').textContent = `${temp}°C`;
+            document.getElementById('windValue').textContent = `${windSpeed} kph ${windDir}`;
+            document.getElementById('precipValue').textContent = precip;
+            document.getElementById('aqiValue').textContent = aqi;
+            
+            // Update AQI color
+            const aqiElement = document.getElementById('aqiValue');
+            aqiElement.style.color = aqi > 100 ? '#ff6b6b' : aqi > 50 ? '#feca57' : '#1dd1a1';
+        }
+        
+        // Update location name
+        function updateLocationName(lat, lng) {
+            let name = 'Custom Location';
+            
+            // Check proximity to known locations
+            if (Math.abs(lat - 23.2) < 0.5 && Math.abs(lng - 77.4) < 0.5) name = 'Sehore, MP';
+            else if (Math.abs(lat - 28.6) < 0.5 && Math.abs(lng - 77.2) < 0.5) name = 'New Delhi';
+            else if (Math.abs(lat - 19.1) < 0.5 && Math.abs(lng - 72.9) < 0.5) name = 'Mumbai, MH';
+            else if (lat > 60) name = 'Arctic Region';
+            else if (lat < -60) name = 'Antarctic Region';
+            else if (Math.abs(lat) < 23.5) name = 'Tropical Region';
+            
+            document.getElementById('locationName').textContent = name;
+        }
+        
+        // Update time
+        function updateTime() {
+            currentHour = parseInt(document.getElementById('timeSlider').value);
+            updateTimeDisplay();
+            updateWeatherForTime();
+        }
+        
+        // Update time display
+        function updateTimeDisplay() {
+            const hour = currentHour;
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+            const day = document.getElementById('daySelect').value;
+            const year = document.getElementById('yearSelect').value;
+            
+            document.getElementById('timeDisplay').textContent = 
+                `Saturday, ${day} October ${year} - ${displayHour}:00 ${ampm}`;
+            
+            // Update timeline
+            document.querySelectorAll('.time-step').forEach(step => step.classList.remove('active'));
+            const activeStep = Array.from(document.querySelectorAll('.time-step')).find(step => 
+                step.textContent.includes(displayHour.toString()) || 
+                (step.textContent === 'Now' && hour === 11)
+            );
+            if (activeStep) activeStep.classList.add('active');
+        }
+        
+        // Update weather based on time
+        function updateWeatherForTime() {
+            const lat = parseFloat(document.getElementById('latInput').value);
+            const lng = parseFloat(document.getElementById('lonInput').value);
+            updateWeatherInfo(lat, lng);
+            
+            // Update layer opacity based on time (darker at night)
+            const opacity = currentHour >= 6 && currentHour <= 18 ? 0.7 : 0.4;
+            Object.values(weatherLayers).forEach(layer => {
+                if (layer.setOpacity) layer.setOpacity(opacity);
+            });
+        }
+        
+        // Set specific hour
+        function setHour(hour) {
+            document.getElementById('timeSlider').value = hour;
+            currentHour = hour;
+            updateTimeDisplay();
+            updateWeatherForTime();
+        }
+        
+        // Play animation
+        function playAnimation() {
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+                event.target.innerHTML = '<i class="fas fa-play"></i> Play 24h';
+                return;
+            }
+            
+            event.target.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            let hour = 0;
+            
+            animationInterval = setInterval(() => {
+                setHour(hour);
+                hour = (hour + 1) % 24;
+                
+                if (hour === 0) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                    document.querySelector('.play-btn').innerHTML = '<i class="fas fa-play"></i> Play 24h';
+                }
+            }, 1000);
+        }
+        
+        // Toggle live mode
+        function toggleLive() {
+            isLive = !isLive;
+            event.target.classList.toggle('active');
+            
+            if (isLive) {
+                // Update every 5 seconds with random variations
+                setInterval(() => {
+                    if (!isLive) return;
+                    
+                    // Add random variations to weather
+                    const lat = parseFloat(document.getElementById('latInput').value);
+                    const lng = parseFloat(document.getElementById('lonInput').value);
+                    updateWeatherInfo(lat, lng);
+                    
+                    // Animate wind particles
+                    if (currentLayer === 'wind') {
+                        animateWind();
+                    }
+                }, 5000);
+            }
+        }
+        
+        // Animate wind particles
+        function animateWind() {
+            // Clear existing animations
+            windAnimations.forEach(marker => map.removeLayer(marker));
+            windAnimations = [];
+            
+            // Create new wind particles
+            const bounds = map.getBounds();
+            for (let i = 0; i < 10; i++) {
+                const lat = Math.random() * (bounds.getNorth() - bounds.getSouth()) + bounds.getSouth();
+                const lng = Math.random() * (bounds.getEast() - bounds.getWest()) + bounds.getWest();
+                
+                const windParticle = L.divIcon({
+                    html: '<div class="wind-particle"></div>',
+                    iconSize: [40, 2],
+                    className: ''
+                });
+                
+                const marker = L.marker([lat, lng], { icon: windParticle }).addTo(map);
+                windAnimations.push(marker);
+            }
+        }
+        
+        // Show/hide loading
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('active', show);
+        }
+        
+        // Update date
+        function updateDate() {
+            updateTimeDisplay();
+            updateWeatherForTime();
+        }
+        
+        // Initialize on load
+        window.onload = function() {
+            initMap();
+            updateTimeDisplay();
+            updateWeatherInfo(23.2, 77.4);
+        };
+    </script>
+</body>
+</html>

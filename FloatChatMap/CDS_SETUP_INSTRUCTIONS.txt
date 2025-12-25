@@ -1,0 +1,58 @@
+CDS API SETUP INSTRUCTIONS
+==========================
+
+You provided:
+- URL: https://cds.climate.copernicus.eu/api
+- API Key: fa8373b2-5bc8-4bc9-ad6b-829d482cb15c
+
+⚠️ MISSING: You need your UID (User ID)
+
+HOW TO FIND YOUR UID:
+--------------------
+1. Login to https://cds.climate.copernicus.eu
+2. Go to https://cds.climate.copernicus.eu/api-how-to
+3. Look for a section showing:
+   key: 123456:fa8373b2-5bc8-4bc9-ad6b-829d482cb15c
+        ^^^^^^
+        This is your UID
+
+MANUAL SETUP (Once you have your UID):
+--------------------------------------
+
+Method 1 - Using Notepad:
+1. Press Win+R, type: notepad %USERPROFILE%\.cdsapirc
+2. Add these lines (replace YOUR_UID with your actual UID):
+   
+   url: https://cds.climate.copernicus.eu/api
+   key: YOUR_UID:fa8373b2-5bc8-4bc9-ad6b-829d482cb15c
+
+3. Save and close
+
+Method 2 - Using PowerShell:
+1. Open PowerShell
+2. Run this command (replace YOUR_UID with your actual UID):
+
+@"
+url: https://cds.climate.copernicus.eu/api
+key: YOUR_UID:fa8373b2-5bc8-4bc9-ad6b-829d482cb15c
+"@ | Out-File -FilePath "$env:USERPROFILE\.cdsapirc" -Encoding ascii
+
+Method 3 - Using Command Prompt:
+1. Open Command Prompt
+2. Run these commands (replace YOUR_UID with your actual UID):
+
+(
+echo url: https://cds.climate.copernicus.eu/api
+echo key: YOUR_UID:fa8373b2-5bc8-4bc9-ad6b-829d482cb15c
+) > %USERPROFILE%\.cdsapirc
+
+VERIFY SETUP:
+------------
+Run: python check_cds_config.py
+
+TROUBLESHOOTING:
+---------------
+If you get connection errors, try changing the URL to:
+url: https://cds.climate.copernicus.eu/api/v2
+
+The standard endpoint includes '/v2' at the end.

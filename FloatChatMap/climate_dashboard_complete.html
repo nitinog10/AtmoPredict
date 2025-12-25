@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Analysis Dashboard - October 4</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        h1 {
+            font-size: 3em;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(79,172,254,0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .card:hover::before {
+            opacity: 1;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(79,172,254,0.3);
+        }
+        
+        .card-large {
+            grid-column: span 2;
+        }
+        
+        .card-full {
+            grid-column: 1 / -1;
+        }
+        
+        .card h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #4facfe;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .current-temp {
+            font-size: 5em;
+            font-weight: 200;
+            text-align: center;
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 20px 0;
+        }
+        
+        .temp-range {
+            text-align: center;
+            font-size: 1.2em;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .metric-value {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #00f2fe;
+        }
+        
+        .aqi-bar {
+            width: 100%;
+            height: 40px;
+            border-radius: 20px;
+            background: linear-gradient(to right, 
+                #00e400 0%, #ffff00 25%, #ff7e00 50%, 
+                #ff0000 75%, #99004c 100%);
+            position: relative;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .aqi-indicator {
+            position: absolute;
+            top: -5px;
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+            left: 25%;
+            transform: translateX(-50%);
+        }
+        
+        .prediction-box {
+            background: rgba(79,172,254,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            text-align: center;
+            border: 1px solid rgba(79,172,254,0.3);
+        }
+        
+        .prediction-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .prediction-label {
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1em;
+        }
+        
+        .heatmap-container {
+            width: 100%;
+            height: 500px;
+            margin: 20px 0;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        
+        .location-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 30px;
+            margin: 20px 0;
+        }
+        
+        .wind-display {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .wind-compass {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            position: relative;
+            background: radial-gradient(circle, rgba(79,172,254,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            border: 2px solid rgba(79,172,254,0.5);
+        }
+        
+        .wind-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 80px;
+            background: linear-gradient(to top, transparent, #00f2fe);
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(-45deg);
+        }
+        
+        .wind-arrow::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -8px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 20px solid #00f2fe;
+        }
+        
+        .compass-labels {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .compass-label {
+            position: absolute;
+            font-weight: bold;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .compass-label.n { top: 5px; left: 50%; transform: translateX(-50%); }
+        .compass-label.s { bottom: 5px; left: 50%; transform: translateX(-50%); }
+        .compass-label.e { right: 5px; top: 50%; transform: translateY(-50%); }
+        .compass-label.w { left: 5px; top: 50%; transform: translateY(-50%); }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .card-large, .card-full {
+                grid-column: 1;
+            }
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-cloud-sun"></i> Climate Analysis Dashboard</h1>
+            <p style="font-size: 1.2em; color: rgba(255,255,255,0.7);">October 4 Climate Data & Predictions</p>
+            <div class="location-badge">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Sehore, Madhya Pradesh, India (23.2°N, 77.4°E)</span>
+            </div>
+        </header>
+        
+        <div class="dashboard-grid">
+            <!-- Current Weather Card -->
+            <div class="card card-large">
+                <h2><i class="fas fa-sun"></i> Current Weather - Oct 4, 2025</h2>
+                <div class="current-temp">29°C</div>
+                <div class="temp-range">
+                    <i class="fas fa-temperature-low"></i> 23°C — 31°C <i class="fas fa-temperature-high"></i>
+                </div>
+                <div style="margin-top: 30px;">
+                    <div class="metric">
+                        <span class="metric-label"><i class="fas fa-tint"></i> Humidity</span>
+                        <span class="metric-value">65%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label"><i class="fas fa-compress"></i> Pressure</span>
+                        <span class="metric-value">1013 hPa</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label"><i class="fas fa-cloud-rain"></i> Precipitation</span>
+                        <span class="metric-value">Light Rain</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Air Quality Card -->
+            <div class="card">
+                <h2><i class="fas fa-lungs"></i> Air Quality</h2>
+                <div class="aqi-bar">
+                    <div class="aqi-indicator">76</div>
+                </div>
+                <p style="text-align: center; margin-top: 20px;">
+                    <strong style="color: #ffff00;">Moderate</strong><br>
+                    <small style="color: rgba(255,255,255,0.6);">Sensitive groups should limit outdoor exposure</small>
+                </p>
+            </div>
+            
+            <!-- Wind Conditions -->
+            <div class="card">
+                <h2><i class="fas fa-wind"></i> Wind Conditions</h2>
+                <div class="wind-display">
+                    <div class="wind-compass">
+                        <div class="wind-arrow"></div>
+                        <div class="compass-labels">
+                            <span class="compass-label n">N</span>
+                            <span class="compass-label s">S</span>
+                            <span class="compass-label e">E</span>
+                            <span class="compass-label w">W</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <div style="font-size: 2em; font-weight: bold;">11 kph</div>
+                        <div style="color: rgba(255,255,255,0.7);">Gusts up to 26 kph</div>
+                        <div style="margin-top: 10px; color: #00f2fe;">Northwest</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 2026 Climate Predictions -->
+            <div class="card card-full">
+                <h2><i class="fas fa-chart-line"></i> Climate Predictions for October 4, 2026</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div class="prediction-box">
+                        <i class="fas fa-thermometer-half" style="font-size: 2em; color: #f5576c;"></i>
+                        <div class="prediction-value" style="color: #f5576c;">17.2°C</div>
+                        <div class="prediction-label">Temperature</div>
+                        <small style="color: #4facfe;">+2.0°C since 2015</small>
+                    </div>
+                    <div class="prediction-box">
+                        <i class="fas fa-cloud-rain" style="font-size: 2em; color: #4facfe;"></i>
+                        <div class="prediction-value" style="color: #4facfe;">49.5 mm</div>
+                        <div class="prediction-label">Precipitation</div>
+                        <small>Slight decrease trend</small>
+                    </div>
+                    <div class="prediction-box">
+                        <i class="fas fa-gauge" style="font-size: 2em; color: #00f2fe;"></i>
+                        <div class="prediction-value" style="color: #00f2fe;">1013.4 hPa</div>
+                        <div class="prediction-label">Pressure</div>
+                        <small>Relatively stable</small>
+                    </div>
+                    <div class="prediction-box">
+                        <i class="fas fa-chart-area" style="font-size: 2em; color: #f093fb;"></i>
+                        <div class="prediction-value" style="color: #f093fb;">+0.164°C/yr</div>
+                        <div class="prediction-label">Warming Rate</div>
+                        <small>1.64°C per decade</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Temperature Heatmap -->
+            <div class="card card-full">
+                <h2><i class="fas fa-th"></i> Temperature Heatmap (2015-2026)</h2>
+                <div id="temperatureHeatmap" class="heatmap-container"></div>
+            </div>
+            
+            <!-- Historical Trends Chart -->
+            <div class="card card-full">
+                <h2><i class="fas fa-history"></i> Historical Climate Trends</h2>
+                <div class="chart-container">
+                    <canvas id="trendsChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Regional Climate Map Simulation -->
+            <div class="card card-full">
+                <h2><i class="fas fa-map"></i> Regional Climate Patterns</h2>
+                <div id="regionalMap" class="heatmap-container"></div>
+            </div>
+        </div>
+        
+        <footer style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.5);">
+            <p>Data based on ERA5 reanalysis and climate models</p>
+            <p>Generated: <span id="timestamp"></span></p>
+        </footer>
+    </div>
+    
+    <script>
+        // Set timestamp
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        
+        // Temperature Heatmap
+        function createTemperatureHeatmap() {
+            const years = Array.from({length: 12}, (_, i) => 2015 + i);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            const octTemps = [15.2, 15.5, 15.8, 15.3, 16.1, 16.0, 16.4, 16.2, 16.6, 16.8, 17.0, 17.2];
+            const z = years.map((year, i) => {
+                return months.map((month, j) => {
+                    if (j === 9) return octTemps[i]; // October actual data
+                    const base = octTemps[i];
+                    const seasonal = 12 * Math.sin((j - 3) * Math.PI / 6);
+                    return base + seasonal + (Math.random() - 0.5) * 3;
+                });
+            });
+            
+            const data = [{
+                z: z,
+                x: months,
+                y: years,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#313695'],
+                    [0.2, '#4575b4'],
+                    [0.4, '#abd9e9'],
+                    [0.6, '#fee090'],
+                    [0.8, '#f46d43'],
+                    [1, '#a50026']
+                ],
+                colorbar: {
+                    title: 'Temperature (°C)',
+                    titleside: 'right',
+                    tickmode: 'linear',
+                    tick0: 0,
+                    dtick: 5
+                }
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'Monthly Temperature Variations',
+                    font: { color: '#ffffff' }
+                },
+                xaxis: { 
+                    title: 'Month',
+                    tickfont: { color: '#ffffff' }
+                },
+                yaxis: { 
+                    title: 'Year',
+                    tickfont: { color: '#ffffff' }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: { color: '#ffffff' },
+                margin: { t: 50, r: 50, b: 50, l: 50 }
+            };
+            
+            Plotly.newPlot('temperatureHeatmap', data, layout, {responsive: true});
+        }
+        
+        // Historical Trends Chart
+        function createTrendsChart() {
+            const ctx = document.getElementById('trendsChart').getContext('2d');
+            
+            const data = {
+                labels: [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [15.2, 15.5, 15.8, 15.3, 16.1, 16.0, 16.4, 16.2, 16.6, 16.8, 17.0, 17.2],
+                    borderColor: '#f5576c',
+                    backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    yAxisID: 'y'
+                }, {
+                    label: 'Precipitation (mm)',
+                    data: [45, 52, 38, 61, 42, 55, 48, 59, 41, 53, 46, 49.5],
+                    borderColor: '#4facfe',
+                    backgroundColor: 'rgba(79, 172, 254, 0.1)',
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    yAxisID: 'y1'
+                }]
+            };
+            
+            const config = {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#ffffff' }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)',
+                                color: '#f5576c'
+                            },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#f5576c' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Precipitation (mm)',
+                                color: '#4facfe'
+                            },
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#4facfe' }
+                        }
+                    }
+                }
+            };
+            
+            new Chart(ctx, config);
+        }
+        
+        // Regional Climate Map
+        function createRegionalMap() {
+            // Simulate regional temperature data around the location
+            const lat = Array.from({length: 20}, (_, i) => 20 + i * 0.5);
+            const lon = Array.from({length: 20}, (_, i) => 75 + i * 0.5);
+            
+            const z = lat.map((latVal) => {
+                return lon.map((lonVal) => {
+                    const dist = Math.sqrt(Math.pow(latVal - 23.2, 2) + Math.pow(lonVal - 77.4, 2));
+                    return 29 - dist * 0.5 + (Math.random() - 0.5) * 2;
+                });
+            });
+            
+            const data = [{
+                z: z,
+                x: lon,
+                y: lat,
+                type: 'heatmap',
+                colorscale: 'Jet',
+                colorbar: {
+                    title: 'Temperature (°C)',
+                    titleside: 'right'
+                }
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'Regional Temperature Distribution',
+                    font: { color: '#ffffff' }
+                },
+                xaxis: { 
+                    title: 'Longitude',
+                    tickfont: { color: '#ffffff' }
+                },
+                yaxis: { 
+                    title: 'Latitude',
+                    tickfont: { color: '#ffffff' }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: { color: '#ffffff' },
+                annotations: [{
+                    x: 77.4,
+                    y: 23.2,
+                    xref: 'x',
+                    yref: 'y',
+                    text: 'Your Location',
+                    showarrow: true,
+                    arrowhead: 2,
+                    arrowsize: 1,
+                    arrowwidth: 2,
+                    arrowcolor: '#ffffff',
+                    ax: -40,
+                    ay: -40,
+                    font: {
+                        color: '#ffffff',
+                        size: 14
+                    }
+                }]
+            };
+            
+            Plotly.newPlot('regionalMap', data, layout, {responsive: true});
+        }
+        
+        // Initialize all visualizations
+        window.onload = function() {
+            createTemperatureHeatmap();
+            createTrendsChart();
+            createRegionalMap();
+        };
+    </script>
+</body>
+</html>

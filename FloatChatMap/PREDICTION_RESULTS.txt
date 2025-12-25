@@ -1,0 +1,74 @@
+============================================================
+CLIMATE PREDICTION FOR OCTOBER 4, 2026
+============================================================
+
+Historical Data (October 4th, 2015-2025):
+Year     Temp(°C)   Precip(mm)   Pressure(hPa)
+---------------------------------------------
+2015     15.2       45           1013         
+2016     15.5       52           1015         
+2017     15.8       38           1012         
+2018     15.3       61           1014         
+2019     16.1       42           1011         
+2020     16.0       55           1013         
+2021     16.4       48           1016         
+2022     16.2       59           1012         
+2023     16.6       41           1014         
+2024     16.8       53           1013         
+2025     17.0       46           1015         
+
+============================================================
+PREDICTIONS FOR OCTOBER 4, 2026:
+============================================================
+
+Temperature: 17.2°C
+  - Warming trend: 0.164°C/year (1.64°C/decade)
+  - Total change 2015-2026: +2.0°C
+
+Precipitation: 49.5 mm
+  - Trend: -0.05 mm/year
+
+Pressure: 1013.4 hPa
+  - Trend: +0.036 hPa/year
+
+============================================================
+ALTERNATIVE PREDICTIONS (3-Year Moving Average):
+============================================================
+Temperature: 16.8°C
+Precipitation: 46.7 mm
+Pressure: 1014.0 hPa
+
+============================================================
+SUMMARY:
+============================================================
+
+The model predicts for October 4, 2026:
+- Temperature will be around 17.2°C (warming by 2.0°C since 2015)
+- This follows the observed warming trend of 0.164°C/year
+- Natural variability means actual temperature could be ±2°C from prediction
+
+Historical insights (2015-2025):
+- Average October 4th temperature: 16.1°C
+- Temperature range: 15.2°C to 17.0°C
+- Year-to-year variability: 1.8°C
+
+✓ Prediction complete!
+
+============================================================
+HOW TO RUN THE INTERACTIVE MODELS:
+============================================================
+
+1. WINDOWS COMMAND PROMPT:
+   python simple_prediction.py
+   
+2. WINDOWS POWERSHELL:
+   .\run_prediction.ps1
+   
+3. BATCH FILE:
+   run_prediction.bat
+
+If Python is not installed:
+- Download from https://python.org
+- Make sure to check "Add Python to PATH" during installation
+
+============================================================

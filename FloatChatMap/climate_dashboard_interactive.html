@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Climate Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        
+        .control-panel {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto auto auto;
+            gap: 15px;
+            align-items: end;
+        }
+        
+        @media (max-width: 1200px) {
+            .controls-grid {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            
+            .search-btn, .heatmap-btn {
+                grid-column: span 1;
+            }
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .control-group label {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.7);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        
+        .control-group input:focus, .control-group select:focus {
+            outline: none;
+            border-color: #4facfe;
+            background: rgba(255,255,255,0.15);
+            box-shadow: 0 0 0 3px rgba(79,172,254,0.2);
+        }
+        
+        .search-btn {
+            padding: 12px 30px;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(79,172,254,0.4);
+        }
+        
+        .heatmap-btn {
+            padding: 12px 30px;
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .heatmap-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245,87,108,0.4);
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            width: 95%;
+            height: 90%;
+            background: #0f0f23;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .close-modal {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .close-modal:hover {
+            background: rgba(255,255,255,0.2);
+            transform: rotate(90deg);
+        }
+        
+        .modal-body {
+            width: 100%;
+            height: calc(100% - 80px);
+        }
+        
+        .modal-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .date-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .date-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .date-btn:hover, .date-btn.active {
+            background: rgba(79,172,254,0.3);
+            border-color: #4facfe;
+        }
+        
+        .location-display {
+            background: rgba(79,172,254,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .location-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .coordinates {
+            font-family: monospace;
+            color: #00f2fe;
+        }
+        
+        #locationMap {
+            height: 300px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(79,172,254,0.3);
+        }
+        
+        .card-large {
+            grid-column: span 2;
+        }
+        
+        .card-full {
+            grid-column: 1 / -1;
+        }
+        
+        .card h2 {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            color: #4facfe;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .current-temp {
+            font-size: 4em;
+            font-weight: 200;
+            text-align: center;
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 20px 0;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-value {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #00f2fe;
+        }
+        
+        .prediction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .prediction-box {
+            background: rgba(79,172,254,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(79,172,254,0.3);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #4facfe;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(79,172,254,0.3);
+            border-top-color: #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: rgba(245,87,108,0.1);
+            border: 1px solid rgba(245,87,108,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            color: #f5576c;
+            display: none;
+            margin-bottom: 20px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            .card-large, .card-full {
+                grid-column: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-globe-americas"></i> Interactive Climate Dashboard</h1>
+            <p>Explore climate data and predictions for any location</p>
+        </header>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h3 style="margin-bottom: 20px; color: #4facfe;">
+                <i class="fas fa-search-location"></i> Location & Time Controls
+            </h3>
+            
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Latitude</label>
+                    <input type="number" id="latInput" value="23.2" min="-90" max="90" step="0.1" placeholder="Enter latitude">
+                </div>
+                
+                <div class="control-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Longitude</label>
+                    <input type="number" id="lonInput" value="77.4" min="-180" max="180" step="0.1" placeholder="Enter longitude">
+                </div>
+                
+                <div class="control-group">
+                    <label><i class="fas fa-calendar-alt"></i> Date</label>
+                    <select id="dateSelect">
+                        <option value="10-04">October 4</option>
+                        <option value="01-01">January 1</option>
+                        <option value="04-01">April 1</option>
+                        <option value="07-01">July 1</option>
+                        <option value="12-25">December 25</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label><i class="fas fa-clock"></i> Year Range</label>
+                    <select id="yearRange">
+                        <option value="2015-2026">2015-2026</option>
+                        <option value="2020-2030">2020-2030</option>
+                        <option value="2010-2025">2010-2025</option>
+                    </select>
+                </div>
+                
+                <button class="search-btn" onclick="updateDashboard()">
+                    <i class="fas fa-search"></i> Update Dashboard
+                </button>
+                
+                <button class="heatmap-btn" onclick="openWeatherHeatmaps()">
+                    <i class="fas fa-layer-group"></i> Weather Heatmaps
+                </button>
+            </div>
+            
+            <div class="date-controls" style="margin-top: 20px;">
+                <span style="color: rgba(255,255,255,0.7);">Quick locations:</span>
+                <button class="date-btn" onclick="setLocation(23.2, 77.4, 'Sehore, India')">Sehore</button>
+                <button class="date-btn" onclick="setLocation(28.6139, 77.2090, 'New Delhi')">New Delhi</button>
+                <button class="date-btn" onclick="setLocation(19.0760, 72.8777, 'Mumbai')">Mumbai</button>
+                <button class="date-btn" onclick="setLocation(51.5074, -0.1278, 'London')">London</button>
+                <button class="date-btn" onclick="setLocation(40.7128, -74.0060, 'New York')">New York</button>
+                <button class="date-btn" onclick="setLocation(-33.8688, 151.2093, 'Sydney')">Sydney</button>
+            </div>
+        </div>
+        
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage"></div>
+        
+        <!-- Location Display -->
+        <div class="location-display">
+            <div class="location-info">
+                <i class="fas fa-map-marked-alt" style="font-size: 1.5em; color: #4facfe;"></i>
+                <div>
+                    <div id="locationName" style="font-size: 1.2em; font-weight: 600;">Loading...</div>
+                    <div class="coordinates" id="coordinatesDisplay">Lat: --, Lon: --</div>
+                </div>
+            </div>
+            <div id="currentDateTime" style="color: rgba(255,255,255,0.7);"></div>
+        </div>
+        
+        <!-- Map -->
+        <div id="locationMap"></div>
+        
+        <!-- Loading Spinner -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Fetching climate data...</p>
+        </div>
+        
+        <!-- Dashboard Content -->
+        <div id="dashboardContent">
+            <!-- Current Weather -->
+            <div class="dashboard-grid">
+                <div class="card card-large">
+                    <h2><i class="fas fa-sun"></i> Current Weather</h2>
+                    <div class="current-temp" id="currentTemp">--°C</div>
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <span id="tempRange" style="color: rgba(255,255,255,0.7);">-- to --</span>
+                    </div>
+                    <div id="weatherMetrics"></div>
+                </div>
+                
+                <!-- Predictions -->
+                <div class="card">
+                    <h2><i class="fas fa-chart-line"></i> 2026 Predictions</h2>
+                    <div id="predictions" class="prediction-grid"></div>
+                </div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="card card-full">
+                <h2><i class="fas fa-chart-area"></i> Temperature Trends</h2>
+                <div class="chart-container">
+                    <canvas id="trendsChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Heatmap -->
+            <div class="card card-full">
+                <h2><i class="fas fa-th"></i> Regional Temperature Heatmap</h2>
+                <div id="heatmapContainer" style="height: 500px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let map;
+        let marker;
+        let trendsChart;
+        
+        // Initialize map
+        function initMap() {
+            map = L.map('locationMap').setView([23.2, 77.4], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            marker = L.marker([23.2, 77.4]).addTo(map);
+            
+            // Click on map to select location
+            map.on('click', function(e) {
+                const lat = e.latlng.lat.toFixed(1);
+                const lng = e.latlng.lng.toFixed(1);
+                document.getElementById('latInput').value = lat;
+                document.getElementById('lonInput').value = lng;
+                updateDashboard();
+            });
+        }
+        
+        // Set location from quick buttons
+        function setLocation(lat, lon, name) {
+            document.getElementById('latInput').value = lat;
+            document.getElementById('lonInput').value = lon;
+            updateDashboard();
+        }
+        
+        // Update dashboard with new data
+        async function updateDashboard() {
+            const lat = parseFloat(document.getElementById('latInput').value);
+            const lon = parseFloat(document.getElementById('lonInput').value);
+            const date = document.getElementById('dateSelect').value;
+            const yearRange = document.getElementById('yearRange').value;
+            
+            // Validate inputs
+            if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                showError('Please enter valid coordinates');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('dashboardContent').style.opacity = '0.5';
+            
+            // Update map
+            map.setView([lat, lon], 5);
+            marker.setLatLng([lat, lon]);
+            
+            // Simulate API call delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Generate data based on location
+            const currentData = generateCurrentWeather(lat, lon, date);
+            const historicalData = generateHistoricalData(lat, lon, date, yearRange);
+            const predictions = generatePredictions(historicalData);
+            
+            // Update UI
+            updateLocationDisplay(lat, lon);
+            updateCurrentWeather(currentData);
+            updatePredictions(predictions);
+            updateCharts(historicalData, predictions);
+            updateHeatmap(lat, lon);
+            
+            // Hide loading
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('dashboardContent').style.opacity = '1';
+        }
+        
+        // Generate current weather based on location
+        function generateCurrentWeather(lat, lon, date) {
+            // Simulate weather based on latitude (temperature decreases with latitude)
+            const baseTemp = 30 - Math.abs(lat) * 0.5;
+            const seasonalAdjust = date === '01-01' ? -10 : date === '07-01' ? 5 : 0;
+            
+            return {
+                temperature: Math.round(baseTemp + seasonalAdjust + Math.random() * 5),
+                min: Math.round(baseTemp + seasonalAdjust - 5),
+                max: Math.round(baseTemp + seasonalAdjust + 8),
+                humidity: Math.round(40 + Math.random() * 40),
+                pressure: Math.round(1010 + Math.random() * 10),
+                wind: Math.round(5 + Math.random() * 20),
+                aqi: Math.round(30 + Math.abs(lat - 23) * 2 + Math.random() * 50)
+            };
+        }
+        
+        // Generate historical data
+        function generateHistoricalData(lat, lon, date, yearRange) {
+            const [startYear, endYear] = yearRange.split('-').map(Number);
+            const years = [];
+            const temperatures = [];
+            
+            for (let year = startYear; year <= endYear; year++) {
+                years.push(year);
+                // Add warming trend
+                const baseTemp = 15 - Math.abs(lat - 23) * 0.3;
+                const warming = (year - startYear) * 0.15;
+                const temp = baseTemp + warming + (Math.random() - 0.5) * 2;
+                temperatures.push(Math.round(temp * 10) / 10);
+            }
+            
+            return { years, temperatures };
+        }
+        
+        // Generate predictions
+        function generatePredictions(historicalData) {
+            const temps = historicalData.temperatures;
+            const avgTemp = temps.reduce((a, b) => a + b) / temps.length;
+            const trend = (temps[temps.length - 1] - temps[0]) / temps.length;
+            
+            return {
+                temperature: Math.round((temps[temps.length - 1] + trend) * 10) / 10,
+                trend: Math.round(trend * 1000) / 1000,
+                precipitation: Math.round(40 + Math.random() * 30),
+                pressure: Math.round(1010 + Math.random() * 10)
+            };
+        }
+        
+        // Update location display
+        function updateLocationDisplay(lat, lon) {
+            document.getElementById('coordinatesDisplay').textContent = `Lat: ${lat}°, Lon: ${lon}°`;
+            
+            // Reverse geocoding simulation
+            const locationName = getLocationName(lat, lon);
+            document.getElementById('locationName').textContent = locationName;
+        }
+        
+        // Get location name from coordinates
+        function getLocationName(lat, lon) {
+            // Simple location name based on coordinates
+            if (Math.abs(lat - 23.2) < 1 && Math.abs(lon - 77.4) < 1) return 'Sehore, Madhya Pradesh';
+            if (Math.abs(lat - 28.6) < 1 && Math.abs(lon - 77.2) < 1) return 'New Delhi, India';
+            if (Math.abs(lat - 19.1) < 1 && Math.abs(lon - 72.9) < 1) return 'Mumbai, India';
+            if (lat > 60) return 'Arctic Region';
+            if (lat < -60) return 'Antarctic Region';
+            if (lat > 45) return 'Northern Region';
+            if (lat < -45) return 'Southern Region';
+            if (Math.abs(lat) < 23.5) return 'Tropical Region';
+            return `Location (${lat}°, ${lon}°)`;
+        }
+        
+        // Update current weather display
+        function updateCurrentWeather(data) {
+            document.getElementById('currentTemp').textContent = `${data.temperature}°C`;
+            document.getElementById('tempRange').textContent = `${data.min}°C to ${data.max}°C`;
+            
+            const metrics = `
+                <div class="metric">
+                    <span><i class="fas fa-tint"></i> Humidity</span>
+                    <span class="metric-value">${data.humidity}%</span>
+                </div>
+                <div class="metric">
+                    <span><i class="fas fa-wind"></i> Wind Speed</span>
+                    <span class="metric-value">${data.wind} km/h</span>
+                </div>
+                <div class="metric">
+                    <span><i class="fas fa-compress"></i> Pressure</span>
+                    <span class="metric-value">${data.pressure} hPa</span>
+                </div>
+                <div class="metric">
+                    <span><i class="fas fa-lungs"></i> Air Quality</span>
+                    <span class="metric-value" style="color: ${data.aqi > 100 ? '#ff6b6b' : data.aqi > 50 ? '#feca57' : '#1dd1a1'}">
+                        ${data.aqi} ${data.aqi > 100 ? 'Poor' : data.aqi > 50 ? 'Moderate' : 'Good'}
+                    </span>
+                </div>
+            `;
+            document.getElementById('weatherMetrics').innerHTML = metrics;
+        }
+        
+        // Update predictions display
+        function updatePredictions(predictions) {
+            const html = `
+                <div class="prediction-box">
+                    <i class="fas fa-thermometer-half" style="font-size: 2em; color: #f5576c;"></i>
+                    <div style="font-size: 2em; margin: 10px 0; color: #f5576c;">${predictions.temperature}°C</div>
+                    <div>Temperature</div>
+                    <small style="color: #4facfe;">Trend: ${predictions.trend > 0 ? '+' : ''}${predictions.trend}°C/yr</small>
+                </div>
+                <div class="prediction-box">
+                    <i class="fas fa-cloud-rain" style="font-size: 2em; color: #4dabf7;"></i>
+                    <div style="font-size: 2em; margin: 10px 0; color: #4dabf7;">${predictions.precipitation} mm</div>
+                    <div>Precipitation</div>
+                </div>
+                <div class="prediction-box">
+                    <i class="fas fa-gauge" style="font-size: 2em; color: #00f2fe;"></i>
+                    <div style="font-size: 2em; margin: 10px 0; color: #00f2fe;">${predictions.pressure} hPa</div>
+                    <div>Pressure</div>
+                </div>
+            `;
+            document.getElementById('predictions').innerHTML = html;
+        }
+        
+        // Update charts
+        function updateCharts(historicalData, predictions) {
+            const ctx = document.getElementById('trendsChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (trendsChart) {
+                trendsChart.destroy();
+            }
+            
+            // Add prediction year
+            const allYears = [...historicalData.years, historicalData.years[historicalData.years.length - 1] + 1];
+            const allTemps = [...historicalData.temperatures, predictions.temperature];
+            
+            trendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allYears,
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: allTemps,
+                        borderColor: '#f5576c',
+                        backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: (context) => {
+                            return context.dataIndex === allTemps.length - 1 ? '#feca57' : '#f5576c';
+                        },
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataIndex === context.dataset.data.length - 1) {
+                                        return `Predicted: ${context.parsed.y}°C`;
+                                    }
+                                    return `${context.dataset.label}: ${context.parsed.y}°C`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#ffffff' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update heatmap
+        function updateHeatmap(centerLat, centerLon) {
+            const latRange = 10;
+            const lonRange = 10;
+            const resolution = 20;
+            
+            const lats = [];
+            const lons = [];
+            const temps = [];
+            
+            for (let i = 0; i < resolution; i++) {
+                const lat = centerLat - latRange/2 + (i * latRange / resolution);
+                const row = [];
+                for (let j = 0; j < resolution; j++) {
+                    const lon = centerLon - lonRange/2 + (j * lonRange / resolution);
+                    if (i === 0) lons.push(lon.toFixed(1));
+                    
+                    // Generate temperature based on distance from center
+                    const dist = Math.sqrt(Math.pow(lat - centerLat, 2) + Math.pow(lon - centerLon, 2));
+                    const temp = 25 - dist * 2 + (Math.random() - 0.5) * 3;
+                    row.push(temp);
+                }
+                lats.push(lat.toFixed(1));
+                temps.push(row);
+            }
+            
+            const data = [{
+                z: temps,
+                x: lons,
+                y: lats,
+                type: 'heatmap',
+                colorscale: 'Jet',
+                colorbar: {
+                    title: 'Temperature (°C)',
+                    titleside: 'right'
+                }
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'Regional Temperature Distribution',
+                    font: { color: '#ffffff' }
+                },
+                xaxis: { 
+                    title: 'Longitude',
+                    tickfont: { color: '#ffffff' }
+                },
+                yaxis: { 
+                    title: 'Latitude',
+                    tickfont: { color: '#ffffff' }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: { color: '#ffffff' },
+                annotations: [{
+                    x: centerLon,
+                    y: centerLat,
+                    xref: 'x',
+                    yref: 'y',
+                    text: 'Selected Location',
+                    showarrow: true,
+                    arrowhead: 2,
+                    arrowsize: 1,
+                    arrowwidth: 2,
+                    arrowcolor: '#ffffff',
+                    ax: -40,
+                    ay: -40,
+                    font: {
+                        color: '#ffffff',
+                        size: 14
+                    }
+                }]
+            };
+            
+            Plotly.newPlot('heatmapContainer', data, layout, {responsive: true});
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Update date/time
+        function updateDateTime() {
+            document.getElementById('currentDateTime').textContent = new Date().toLocaleString();
+        }
+        
+        // Open weather heatmaps modal
+        function openWeatherHeatmaps() {
+            document.getElementById('weatherModal').classList.add('active');
+            // Pass current coordinates to the weather map
+            const lat = document.getElementById('latInput').value;
+            const lon = document.getElementById('lonInput').value;
+            const iframe = document.getElementById('weatherMapFrame');
+            iframe.src = `weather_map_realistic.html?lat=${lat}&lon=${lon}`;
+        }
+        
+        // Close modal
+        function closeWeatherModal() {
+            document.getElementById('weatherModal').classList.remove('active');
+            document.getElementById('weatherMapFrame').src = '';
+        }
+        
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeWeatherModal();
+            }
+        });
+        
+        // Initialize dashboard
+        window.onload = function() {
+            initMap();
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            updateDashboard();
+        };
+    </script>
+    
+    <!-- Weather Heatmaps Modal -->
+    <div class="modal-overlay" id="weatherModal" onclick="if(event.target === this) closeWeatherModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="margin: 0; color: #4facfe;">
+                    <i class="fas fa-layer-group"></i> Live Weather Heatmaps
+                </h2>
+                <button class="close-modal" onclick="closeWeatherModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <iframe id="weatherMapFrame" class="modal-iframe" src=""></iframe>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

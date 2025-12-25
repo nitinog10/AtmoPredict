@@ -1,0 +1,51 @@
+QUICK CDS SETUP - JUST NEED YOUR UID!
+=====================================
+
+Your credentials:
+- URL: https://cds.climate.copernicus.eu/api
+- API Key: 43dbfada-fcc1-4325-b033-0537ae3938b7
+- UID: ??? (YOU NEED TO GET THIS)
+
+HOW TO GET YOUR UID:
+-------------------
+1. Go to: https://cds.climate.copernicus.eu/api-how-to
+2. Login if needed
+3. Look for: key: 123456:43dbfada-fcc1-4325-b033-0537ae3938b7
+                  ^^^^^^ This is your UID!
+
+ONCE YOU HAVE YOUR UID - QUICK SETUP:
+====================================
+
+Option 1 - Run Python Script:
+----------------------------
+python store_cds_now.py
+(It will ask for your UID)
+
+Option 2 - PowerShell One-Liner:
+-------------------------------
+Replace YOUR_UID below and paste in PowerShell:
+
+@"
+url: https://cds.climate.copernicus.eu/api
+key: YOUR_UID:43dbfada-fcc1-4325-b033-0537ae3938b7
+"@ | Out-File "$env:USERPROFILE\.cdsapirc" -Encoding ascii; Write-Host "✅ CDS API Configured!"
+
+Option 3 - Command Prompt:
+-------------------------
+Replace YOUR_UID and run:
+
+(echo url: https://cds.climate.copernicus.eu/api && echo key: YOUR_UID:43dbfada-fcc1-4325-b033-0537ae3938b7) > %USERPROFILE%\.cdsapirc
+
+Option 4 - Manual:
+-----------------
+1. Create file: C:\Users\YOUR_USERNAME\.cdsapirc
+2. Add these lines (replace YOUR_UID):
+
+url: https://cds.climate.copernicus.eu/api
+key: YOUR_UID:43dbfada-fcc1-4325-b033-0537ae3938b7
+
+VERIFY IT WORKED:
+----------------
+Run: python check_cds_config.py
+
+That's it! Once you add your UID, the climate prediction will work with real data.

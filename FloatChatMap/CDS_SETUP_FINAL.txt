@@ -1,0 +1,45 @@
+CDS API SETUP - NO USER ID REQUIRED
+===================================
+
+Your API Credentials:
+- URL: https://cds.climate.copernicus.eu/api  
+- Key: 43dbfada-fcc1-4325-b033-0537ae3938b7
+
+QUICKEST SETUP METHODS:
+======================
+
+METHOD 1 - Double-click Batch File:
+----------------------------------
+Just double-click: setup_cds_now.bat
+
+METHOD 2 - PowerShell (Right-click → Run with PowerShell):
+----------------------------------------------------------
+setup_cds_direct.ps1
+
+METHOD 3 - Copy & Paste in PowerShell:
+-------------------------------------
+@"
+url: https://cds.climate.copernicus.eu/api
+key: 43dbfada-fcc1-4325-b033-0537ae3938b7
+"@ | Out-File "$env:USERPROFILE\.cdsapirc" -Encoding ascii
+
+METHOD 4 - Manual Setup:
+-----------------------
+1. Open Notepad
+2. Copy and paste these exact lines:
+
+url: https://cds.climate.copernicus.eu/api
+key: 43dbfada-fcc1-4325-b033-0537ae3938b7
+
+3. Save as: %USERPROFILE%\.cdsapirc
+   (Type the filename exactly as shown in the Save dialog)
+
+VERIFY IT WORKED:
+----------------
+Run: python check_cds_config.py
+
+Or check if this file exists:
+C:\Users\YOUR_USERNAME\.cdsapirc
+
+THAT'S IT! 
+Once configured, run: python climate_prediction.py

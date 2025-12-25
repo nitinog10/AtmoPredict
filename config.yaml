@@ -1,0 +1,125 @@
+# Configuration for Extreme Weather Prediction System
+
+# Data Collection
+data:
+  raw_data_path: "data/raw"
+  processed_data_path: "data/processed"
+  nasa_api_key: "FVVrb5hG30eYrxKxg91K4Jex1u8W75TKxBsMvYqL"  # Get from https://api.nasa.gov/
+  
+  # NASA POWER API endpoint for weather data
+  power_api_url: "https://power.larc.nasa.gov/api/temporal/daily/point"
+  
+  # Date range for historical data
+  start_date: "2010-01-01"
+  end_date: "2023-12-31"
+  
+  # Variables to collect
+  parameters:
+    - "T2M"           # Temperature at 2 meters
+    - "T2M_MAX"       # Maximum Temperature
+    - "T2M_MIN"       # Minimum Temperature
+    - "PRECTOTCORR"   # Precipitation
+    - "WS2M"          # Wind Speed at 2 meters
+    - "RH2M"          # Relative Humidity
+    - "PS"            # Surface Pressure
+    - "CLOUD_AMT"     # Cloud Amount
+
+# Extreme Weather Thresholds
+thresholds:
+  very_hot:
+    metric: "T2M_MAX"
+    percentile: 95  # Top 5% of temperatures
+    absolute: 35    # Or 35°C (95°F)
+  
+  very_cold:
+    metric: "T2M_MIN"
+    percentile: 5   # Bottom 5% of temperatures
+    absolute: -5    # Or -5°C (23°F)
+  
+  very_windy:
+    metric: "WS2M"
+    percentile: 95
+    absolute: 15    # 15 m/s (~33 mph)
+  
+  very_wet:
+    metric: "PRECTOTCORR"
+    percentile: 95
+    absolute: 50    # 50mm rainfall
+  
+  very_uncomfortable:
+    # Heat index or combination of temperature + humidity
+    metric: "heat_index"
+    percentile: 95
+    absolute: 40
+
+# Feature Engineering
+features:
+  rolling_window_days: [3, 7, 14, 30]
+  lag_days: [1, 2, 3, 7]
+  historical_comparison_years: 5
+  
+  calendar_features:
+    - day_of_year
+    - month
+    - season
+    - is_weekend
+
+# Model Configuration
+models:
+  random_forest:
+    n_estimators: 200
+    max_depth: 15
+    min_samples_split: 5
+    class_weight: "balanced"
+  
+  xgboost:
+    n_estimators: 300
+    max_depth: 10
+    learning_rate: 0.05
+    scale_pos_weight: 3
+  
+  lightgbm:
+    n_estimators: 300
+    max_depth: 10
+    learning_rate: 0.05
+    num_leaves: 50
+
+# Training Configuration
+training:
+  test_size: 0.2
+  validation_size: 0.2
+  random_seed: 42
+  chronological_split: true
+  cross_validation_folds: 5
+
+# Evaluation Metrics
+evaluation:
+  metrics:
+    - roc_auc
+    - precision_recall_auc
+    - brier_score
+    - log_loss
+  
+  calibration:
+    enabled: true
+    n_bins: 10
+
+# API Configuration
+api:
+  host: "127.0.0.1"
+  port: 8081
+  model_path: "models/trained"
+
+# Weather API Configuration (for short-term forecasts)
+weather_api:
+  openweather_key: "your_openweather_api_key_here"  # Get from https://openweathermap.org/api
+  # If not configured, system will use simulated data
+  
+# Frontend Configuration
+frontend:
+  title: "Extreme Weather Prediction System"
+  default_location:
+    latitude: 40.7128
+    longitude: -74.0060
+    name: "New York, NY"
+
