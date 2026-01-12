@@ -650,7 +650,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For questions, suggestions, or collaboration:
 
-- **GitHub**: [@namanxdev](https://github.com/namanxdev)
+- **GitHub**: [@namanxdev](https://github.com/nitinog10)
 - **Repository**: [AtmoPredict](https://github.com/namanxdev/AtmoPredict)
 
 ## 🎓 NASA Space Apps Challenge
