@@ -19,7 +19,6 @@
 - [API Documentation](#-api-documentation)
 - [Model Details](#-model-details)
 - [Project Structure](#-project-structure)
-- [Contributing](#-contributing)
 
 ## 🎯 Overview
 
